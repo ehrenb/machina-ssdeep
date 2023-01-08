@@ -6,6 +6,7 @@ import ssdeep
 from machina.core.worker import Worker
 
 class SSDeepAnalysis(Worker):
+    
     types = ['*']
     next_queues = ['SimilarityAnalysis']
 
@@ -13,7 +14,6 @@ class SSDeepAnalysis(Worker):
         super(SSDeepAnalysis, self).__init__(*args, **kwargs)
 
     def callback(self, data, properties):
-        # self.logger.info(data)
         data = json.loads(data)
 
         # resolve path
@@ -26,14 +26,16 @@ class SSDeepAnalysis(Worker):
 
         self.logger.info(f"ssdeep for {target} is {ssdeep_hash}")
 
-        # Update node
-        updates = dict(ssdeep=ssdeep_hash)
-        self.update_node(data['id'], updates)
+        image_cls = self.resolve_db_node_cls(data['type'])
+        obj = image_cls.nodes.get(uid=data['uid'])
+        obj.ssdeep = ssdeep_hash
+        obj.save()
 
         body = json.dumps({
             'ts': datetime.now().strftime("%Y%m%d%H%M%S%f"),
-            'id': data['id'],
-            'hashes': data['hashes']
+            'uid': data['uid'],
+            'hashes': data['hashes'],
+            'type': data['type']
         })
 
         # Publishes direct to next_queues
